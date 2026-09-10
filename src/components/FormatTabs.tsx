@@ -39,7 +39,7 @@ export function FormatTabs({ tabs, active, onChange }: FormatTabsProps) {
                 : 'border-transparent hover:bg-[var(--color-surface)]/60',
             )}
           >
-            <span className="flex items-center gap-2 text-sm font-semibold" style={isActive ? { color: 'var(--tab-accent)' } : { color: 'var(--color-text)' }}>
+            <span className="flex flex-nowrap items-center gap-2 whitespace-nowrap text-sm font-semibold" style={isActive ? { color: 'var(--tab-accent)' } : { color: 'var(--color-text)' }}>
               <span className={clsx('h-2 w-2 shrink-0 rounded-full', isActive ? 'opacity-100' : 'opacity-40')} style={{ background: 'var(--tab-accent)' }} />
               {tab.label}
               {tab.badge}
