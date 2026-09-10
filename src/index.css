@@ -1,0 +1,151 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --color-bg: #f6f7f9;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-border: #e2e4e9;
+  --color-border-strong: #cbced6;
+  --color-text: #1a1d24;
+  --color-text-muted: #5c6270;
+  --color-text-faint: #8a8f9c;
+  --color-accent: #6d28d9;
+  --color-accent-fg: #ffffff;
+  --color-accent-soft: #ede9fe;
+  --color-success: #15803d;
+  --color-success-soft: #dcfce7;
+  --color-danger: #b91c1c;
+  --color-danger-soft: #fee2e2;
+  --color-warning: #b45309;
+  --color-warning-soft: #fef3c7;
+  --color-code-bg: #f4f4f6;
+  --color-format-a: #2563eb;
+  --color-format-a-soft: #dbeafe;
+  --color-format-a-bg: #eff6ff;
+  --color-format-b: #0d9488;
+  --color-format-b-soft: #ccfbf1;
+  --color-format-b-bg: #f0fdfa;
+  --yaml-key: #1d4ed8;
+  --yaml-string: #0f766e;
+  --yaml-number: #a15c00;
+  --yaml-punct: #6b7280;
+  --shadow-sm: 0 1px 2px rgba(15, 17, 21, 0.06);
+  --shadow-md: 0 4px 16px rgba(15, 17, 21, 0.08);
+}
+
+.dark {
+  --color-bg: #0d0e12;
+  --color-surface: #15161c;
+  --color-surface-raised: #1b1d25;
+  --color-border: #2a2d38;
+  --color-border-strong: #3a3e4d;
+  --color-text: #e7e8ec;
+  --color-text-muted: #9aa0b1;
+  --color-text-faint: #6b7180;
+  --color-accent: #a78bfa;
+  --color-accent-fg: #14121f;
+  --color-accent-soft: #2a2140;
+  --color-success: #4ade80;
+  --color-success-soft: #14291b;
+  --color-danger: #f87171;
+  --color-danger-soft: #2c1516;
+  --color-warning: #fbbf24;
+  --color-warning-soft: #2c2110;
+  --color-code-bg: #101116;
+  --color-format-a: #60a5fa;
+  --color-format-a-soft: #1e3a5f;
+  --color-format-a-bg: #12203a;
+  --color-format-b: #2dd4bf;
+  --color-format-b-soft: #134e4a;
+  --color-format-b-bg: #0f2a27;
+  --yaml-key: #7dd3fc;
+  --yaml-string: #6ee7b7;
+  --yaml-number: #fbbf24;
+  --yaml-punct: #7d8394;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+@theme inline {
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-surface-raised: var(--color-surface-raised);
+  --color-border: var(--color-border);
+  --color-border-strong: var(--color-border-strong);
+  --color-text: var(--color-text);
+  --color-text-muted: var(--color-text-muted);
+  --color-text-faint: var(--color-text-faint);
+  --color-accent: var(--color-accent);
+  --color-accent-fg: var(--color-accent-fg);
+  --color-accent-soft: var(--color-accent-soft);
+  --color-success: var(--color-success);
+  --color-success-soft: var(--color-success-soft);
+  --color-danger: var(--color-danger);
+  --color-danger-soft: var(--color-danger-soft);
+  --color-warning: var(--color-warning);
+  --color-warning-soft: var(--color-warning-soft);
+  --color-code-bg: var(--color-code-bg);
+  --color-format-a: var(--color-format-a);
+  --color-format-a-soft: var(--color-format-a-soft);
+  --color-format-a-bg: var(--color-format-a-bg);
+  --color-format-b: var(--color-format-b);
+  --color-format-b-soft: var(--color-format-b-soft);
+  --color-format-b-bg: var(--color-format-b-bg);
+  --yaml-key: var(--yaml-key);
+  --yaml-string: var(--yaml-string);
+  --yaml-number: var(--yaml-number);
+  --yaml-punct: var(--yaml-punct);
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-accent-soft);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 999px;
+}
+
+.cm-editor {
+  height: 100%;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
