@@ -28,8 +28,8 @@ const ACCENT_BY_TAB: Record<FormatTabId, string> = {
 
 const editorTheme = EditorView.theme({
   '&': { fontSize: '13px', backgroundColor: 'transparent', height: '100%', color: 'var(--color-text)' },
-  '.cm-content': { fontFamily: 'var(--font-mono)', padding: '12px 0', caretColor: 'var(--color-text)' },
-  '.cm-line': { padding: '0 12px' },
+  '.cm-content': { fontFamily: 'var(--font-mono)', padding: '12px 0', caretColor: 'var(--color-text)', minWidth: '0' },
+  '.cm-line': { padding: '0 12px', overflowWrap: 'anywhere', wordBreak: 'break-word' },
   '.cm-gutters': { backgroundColor: 'transparent', border: 'none', color: 'var(--color-text-faint)' },
   '.cm-activeLine': { backgroundColor: 'transparent' },
   '.cm-activeLineGutter': { backgroundColor: 'transparent' },
