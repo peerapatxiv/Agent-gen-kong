@@ -16,6 +16,40 @@ const TABLE_ROW_RE = /^\s*\|(.*)\|\s*$/
 const EXCLUDE_MARKER_RE = /\b(internal service|internal|exclude[ds]?)\b/i
 const FIELD_LINE_RE = /^([A-Za-z][A-Za-z ]*?)\s*:\s*(.*)$/
 
+const URL_RE = /https?:\/\/\S+/g
+
+/** Drop full URLs before running the bare-path (no explicit method) heuristic, so a Jira/Confluence link's own
+ * URL path (e.g. `/browse/RL1-46711`) doesn't get mistaken for an API route. */
+function stripUrls(text: string): string {
+  return text.replace(URL_RE, ' ')
+}
+
+// Confluence slugifies a page title's spaces/slashes into "+", e.g. a page titled
+// "DELETE /v1/tiles/settings/ext - Jun 2026" becomes .../pages/123/DELETE+v1+tiles+settings+ext+-+Jun+2026
+const CONFLUENCE_SLUG_RE = /\/wiki\/spaces\/[^/\s]+\/pages\/\d+\/(\S+)/i
+const MONTH_ABBREVIATIONS = new Set(['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'])
+
+/** Recover a `METHOD /path` pair hidden in a slugified Confluence page-title link, e.g. a "Required Scope" table's API column that only links to a wiki page instead of stating the path directly. */
+function extractFromConfluenceSlug(cell: string): { method: string; path: string } | null {
+  const match = cell.match(CONFLUENCE_SLUG_RE)
+  if (!match) return null
+
+  const tokens = match[1].split('+').filter(Boolean)
+  if (tokens.length < 2) return null
+
+  const method = tokens[0].toUpperCase()
+  if (!(HTTP_METHODS as readonly string[]).includes(method)) return null
+
+  const pathTokens: string[] = []
+  for (const token of tokens.slice(1)) {
+    if (token === '-' || MONTH_ABBREVIATIONS.has(token.toLowerCase())) break
+    pathTokens.push(token)
+  }
+  if (pathTokens.length === 0) return null
+
+  return { method, path: `/${pathTokens.join('/')}` }
+}
+
 export interface PluginSegment {
   name: string
   fields: FieldEntry[]
@@ -149,11 +183,17 @@ function collectTableGroups(lines: string[]): TableGroup[] {
 function extractFromCell(cell: string): { path: string | null; inlineMethod?: string; excluded: boolean; exclusionReason?: string; hasQueryString: boolean } {
   const excluded = EXCLUDE_MARKER_RE.test(cell)
   const exclusionReason = excluded ? (cell.match(EXCLUDE_MARKER_RE)?.[0] ?? 'excluded') : undefined
+
+  const slugMatch = extractFromConfluenceSlug(cell)
+  if (slugMatch) {
+    return { path: slugMatch.path, inlineMethod: slugMatch.method, excluded, exclusionReason, hasQueryString: false }
+  }
+
   const anchorMatch = cell.match(ANCHOR_RE)
   if (anchorMatch) {
     return { path: anchorMatch[2], inlineMethod: anchorMatch[1].toUpperCase(), excluded, exclusionReason, hasQueryString: Boolean(anchorMatch[3]) }
   }
-  const pathMatch = cell.match(PATH_ONLY_RE)
+  const pathMatch = stripUrls(cell).match(PATH_ONLY_RE)
   if (pathMatch) {
     return { path: pathMatch[1], excluded, exclusionReason, hasQueryString: Boolean(pathMatch[2]) }
   }
@@ -234,6 +274,26 @@ export function parseTableGroup(group: TableGroup): ExtractedRoute[] {
   return results
 }
 
+/**
+ * Read a table that isn't a multi-route table (no "path" column) as ticket-level
+ * `label: value` rows instead — e.g. a Confluence-style info table with one row per
+ * field ("Required scopes", "Environment", ...). Rows whose label isn't a recognized
+ * field keyword (link rows, the title row) are ignored.
+ */
+function extractKeyValueFields(group: TableGroup): FieldEntry[] {
+  const fields: FieldEntry[] = []
+  for (const line of group.lines) {
+    const cells = splitTableRow(line)
+    if (cells.length < 2) continue
+    const kind = classifyFieldKeyword(cells[0])
+    if (!kind) continue
+    const value = cells.slice(1).join(' ').trim()
+    if (!value) continue
+    fields.push({ kind, value })
+  }
+  return fields
+}
+
 // ---------------------------------------------------------------------------
 // Prose parsing
 // ---------------------------------------------------------------------------
@@ -259,7 +319,7 @@ export function parseProseLines(lines: string[]): ProseBlock[] {
     if (anchorMatch) {
       return { path: anchorMatch[2], inlineMethod: anchorMatch[1].toUpperCase(), hasQueryString: Boolean(anchorMatch[3]) }
     }
-    const pathMatch = line.match(PATH_ONLY_RE)
+    const pathMatch = stripUrls(line).match(PATH_ONLY_RE)
     if (pathMatch) {
       return { path: pathMatch[1], inlineMethod: undefined, hasQueryString: Boolean(pathMatch[2]) }
     }
@@ -359,8 +419,30 @@ export function splitTableAndProse(text: string): { tableGroups: TableGroup[]; p
 
 export function extractRoutesFromText(text: string): ExtractedRoute[] {
   const { tableGroups, proseLines } = splitTableAndProse(text)
-  const tableRoutes = tableGroups.flatMap(parseTableGroup)
+
+  const tableRoutes: ExtractedRoute[] = []
+  const ticketLevelFields: FieldEntry[] = []
+  for (const group of tableGroups) {
+    const rows = parseTableGroup(group)
+    if (rows.length > 0) {
+      tableRoutes.push(...rows)
+    } else {
+      ticketLevelFields.push(...extractKeyValueFields(group))
+    }
+  }
+
   const proseBlocks = parseProseLines(proseLines)
   const proseRoutes = proseBlocks.map(proseBlockToExtracted)
+
+  // A vertical info table only unambiguously belongs to "the" route when there's
+  // exactly one and no genuine multi-route table was also found.
+  if (tableRoutes.length === 0 && proseRoutes.length === 1) {
+    const [route] = proseRoutes
+    if (route.requiredScopeRaw === undefined) {
+      const scopeField = ticketLevelFields.find((f) => f.kind === 'requiredScope')
+      if (scopeField) route.requiredScopeRaw = scopeField.value
+    }
+  }
+
   return [...tableRoutes, ...proseRoutes]
 }

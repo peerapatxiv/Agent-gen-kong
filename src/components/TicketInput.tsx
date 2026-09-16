@@ -1,5 +1,6 @@
 import { FileText, Sparkles, Trash2 } from 'lucide-react'
 import { EXAMPLE_TICKETS } from '@/examples/tickets'
+import { JiraUrlImport } from './JiraUrlImport'
 import { Button } from './ui/Button'
 
 interface TicketInputProps {
@@ -8,11 +9,14 @@ interface TicketInputProps {
   onGenerate: () => void
   onClear: () => void
   onLoadExample: (body: string) => void
+  onImportTicket: (text: string) => void
 }
 
-export function TicketInput({ value, onChange, onGenerate, onClear, onLoadExample }: TicketInputProps) {
+export function TicketInput({ value, onChange, onGenerate, onClear, onLoadExample, onImportTicket }: TicketInputProps) {
   return (
     <div className="flex flex-col gap-3">
+      <JiraUrlImport onImport={onImportTicket} />
+
       <div className="flex items-center justify-between gap-3">
         <label htmlFor="ticket-input" className="text-sm font-semibold text-[var(--color-text)]">
           Jira Ticket / Description

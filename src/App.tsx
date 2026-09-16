@@ -47,6 +47,11 @@ function AppShell() {
     runParse(body)
   }
 
+  const handleImportTicket = (text: string) => {
+    setTicketText(text)
+    runParse(text)
+  }
+
   const updateRoute = (id: string, patch: Partial<RouteDefinition>) => {
     setResult((prev) => ({
       ...prev,
@@ -88,7 +93,14 @@ function AppShell() {
 
       <main className="grid flex-1 grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="flex flex-col gap-6">
-          <TicketInput value={ticketText} onChange={setTicketText} onGenerate={handleGenerate} onClear={handleClear} onLoadExample={handleLoadExample} />
+          <TicketInput
+            value={ticketText}
+            onChange={setTicketText}
+            onGenerate={handleGenerate}
+            onClear={handleClear}
+            onLoadExample={handleLoadExample}
+            onImportTicket={handleImportTicket}
+          />
           <RoutePreview routes={result.routes} excludedRoutes={result.excludedRoutes} onUpdate={updateRoute} onDelete={deleteRoute} />
         </div>
 

@@ -284,6 +284,69 @@ Required Scope: oob`
   })
 })
 
+describe('Confluence-style vertical info table (TGP-2214 shape)', () => {
+  const ticket = `[GW-EXT][AUG-2026] (NEW) POST /v1/debitcards/resetpin/inquiry/ext
+
+| GW | [External GW] POST /v1/debitcards/resetpin/inquiry/ext |
+| Requirements | Add new scope to endpoint. |
+| Environment | External GW. |
+| Required scopes | oob |
+| Generated scopes | - |
+| Confluence Link | https://example.atlassian.net/wiki/x/abc123 |
+| Story Link | https://example.atlassian.net/browse/RL1-50853 |`
+
+  it('pulls "Required scopes" out of the vertical table and attaches it to the one route found', () => {
+    const { routes } = parseTicket(ticket)
+    expect(routes).toHaveLength(1)
+    expect(routes[0].scopes).toEqual(['oob'])
+    const yamlText = generateFormatA(routes)
+    expect(yamlText).toBe(
+      `- name: "V1-debitcards-resetpin-inquiry-ext-routes"
+  paths:
+    - "/v1/debitcards/resetpin/inquiry/ext"
+  methods:
+    - "POST"
+  tags: ["debitcards", "v1"]
+  enabled: true
+  plugins:
+    - name: "ValidateToken"
+      enabled: true
+      config:
+        scopes:
+          - "oob"
+`,
+    )
+  })
+})
+
+describe('Confluence slug link as the only path source (TGP-2236 shape)', () => {
+  const ticket = `GW | [External GW] | Add Scope to EXT-GW
+
+Description: Add scope to EXT-GW
+Ext/Int: External GW.
+Release :  July 26
+Epic Ref: https://scbtechx.atlassian.net/browse/RL1-46711
+| MS | API | Required Scope | Generated Scope | Remark |
+| tiles MS | https://scbtechx.atlassian.net/wiki/spaces/FE/pages/13700235463/DELETE+v1+tiles+transaction-service+settings+ext+-+Jun+2026 | oob, prelogin |  | exclude https://scbtechx.atlassian.net/wiki/spaces/FE/pages/13704725352 |`
+
+  it('recovers the method and path from the slugified Confluence link instead of the wiki URL itself', () => {
+    const { routes } = parseTicket(ticket)
+    expect(routes).toHaveLength(1)
+    expect(routes[0].methods).toEqual(['DELETE'])
+    expect(routes[0].path).toBe('/v1/tiles/transaction-service/settings/ext')
+    expect(routes[0].scopes).toEqual(['oob', 'prelogin'])
+    expect(routes[0].methodAmbiguous).toBe(false)
+  })
+
+  it('ignores the unrecognized Remark column entirely — no exclusion, description, or tag leakage', () => {
+    const { routes, excludedRoutes } = parseTicket(ticket)
+    expect(excludedRoutes).toHaveLength(0)
+    expect(routes[0].excluded).toBe(false)
+    expect(routes[0].description).toBeUndefined()
+    expect(routes[0].tags).toBeUndefined()
+  })
+})
+
 describe('Missing version', () => {
   it('flags a route with no version segment for manual review', () => {
     const ticket = `POST /auth/fasteasy-login

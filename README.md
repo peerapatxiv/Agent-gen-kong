@@ -30,7 +30,7 @@ npm run preview      # preview the production build
 ## Using the app
 
 1. Paste a Jira ticket (table or prose style) into **Jira Ticket / Description**, or
-   pick one from **Load Example**.
+   pick one from **Load Example** — or use **Import from Jira URL** (see below).
 2. Click **Generate YAML**. The parser detects external API routes, skips
    internal/excluded ones, and extracts methods, paths, scopes, plugins and domain.
 3. Review **Detected Routes** — every field is editable inline (method, path, scopes,
@@ -41,6 +41,30 @@ npm run preview      # preview the production build
    shows whether each document is structurally valid.
 6. The **Validation** panel summarizes route counts and surfaces warnings (ambiguous
    method, missing version, possible query string, duplicate routes).
+
+## Import from Jira URL
+
+Enter your Jira email + [API token](https://id.atlassian.com/manage-profile/security/api-tokens),
+paste a Jira issue link (e.g. `https://your-site.atlassian.net/browse/TGP-2214`) into
+**Import from Jira URL**, and click **Fetch ticket**. This calls the issue's REST API
+(`/rest/api/latest/issue/<KEY>?expand=renderedFields`, per
+[Atlassian's guide to Jira REST API URLs](https://community.atlassian.com/forums/Jira-articles/Using-Jira-REST-API-URLs-to-Access-Data/ba-p/2814475))
+directly from the browser with Basic Auth, converts the rendered HTML description back
+into the same plain-text/table shape the parser reads from a manual paste, and runs it
+through the normal parsing pipeline — no copy/paste needed when it works.
+
+Your email/token are stored only in this browser's `localStorage` and are sent
+directly to your Jira site with each request — never anywhere else, and never over
+the network to any server this app controls (there is no server).
+
+**Fallback:** Jira Cloud generally doesn't send CORS headers for arbitrary origins, so
+the direct fetch can be blocked by the browser regardless of how valid the
+credentials are — this is a decision made by Jira, not something the app can retry its
+way around. When that happens (or when no credentials are entered), the app
+automatically opens the same REST URL in a new tab — which works because it's a normal
+browser navigation using your existing logged-in Jira session, not a script-driven
+request — and reveals a box to paste the JSON response back into, restoring the same
+result as a successful direct fetch.
 
 ## Parsing rules implemented
 
@@ -85,9 +109,9 @@ npm run preview
 
 ```
 src/
-  components/      TicketInput, RoutePreview, RouteEditor, YamlOutput,
+  components/      TicketInput, JiraUrlImport, RoutePreview, RouteEditor, YamlOutput,
                     FormatTabs, ValidationPanel, ui/ (Button, Badge, Card)
-  parser/           ticketParser, routeParser, scopeParser, pluginParser
+  parser/           ticketParser, routeParser, scopeParser, pluginParser, jiraImport
   generators/       formatA, formatB, nameGenerator, tagGenerator
   types/            RouteDefinition, PluginDefinition, ParseIssue, ParseResult
   utils/            normalization, yaml (validation), download (copy/ZIP)

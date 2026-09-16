@@ -47,6 +47,8 @@ export function classifyFieldKeyword(raw: string): FieldKind | null {
       return 'requiredScope'
     case 'generate scope':
     case 'generate scopes':
+    case 'generated scope':
+    case 'generated scopes':
       return 'generateScope'
     case 'plugin':
     case 'plugins':
