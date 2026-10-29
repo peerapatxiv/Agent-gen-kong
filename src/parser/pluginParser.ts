@@ -127,3 +127,13 @@ export function buildPluginConfig(
 export function defaultValidateTokenPlugin(scopes: string[]): PluginDefinition {
   return scopes.length ? { name: 'ValidateToken', enabled: true, config: { scopes } } : { name: 'ValidateToken', enabled: true }
 }
+
+/** Re-apply edited route scopes to the scope-gated plugins (ValidateToken / ValidateTokenIfApiAuth) so the YAML follows the edit. */
+export function syncRequiredScopes(plugins: PluginDefinition[], scopes: string[]): PluginDefinition[] {
+  return plugins.map((plugin) => {
+    if (plugin.name !== 'ValidateToken' && plugin.name !== 'ValidateTokenIfApiAuth') return plugin
+    const { scopes: _old, ...rest } = plugin.config ?? {}
+    const config = scopes.length ? { ...rest, scopes } : rest
+    return Object.keys(config).length ? { ...plugin, config } : { name: plugin.name, enabled: plugin.enabled }
+  })
+}

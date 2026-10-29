@@ -356,3 +356,72 @@ Required Scope: oob`
     expect(issues.some((i) => i.message.includes('version segment'))).toBe(true)
   })
 })
+
+describe('Required scope header above the API list', () => {
+  const ticket = `Description
+
+Release: Oct 2026
+
+Description: Add new scope for new endpoints
+
+Required scope: noncustomer, oob, noncustomerlogin, adddevice_verifyuser, register_verifyuser, initregisterprofile
+
+Generate scope : None
+
+API:
+
+POST /v1/ekyc/generateOTP/ext - Oct 2026
+
+Flow:
+
+Onboard open account`
+
+  it('applies the leading required scope to the route below it', () => {
+    const { routes } = parseTicket(ticket)
+    expect(routes).toHaveLength(1)
+    expect(routes[0].path).toBe('/v1/ekyc/generateOTP/ext')
+    expect(routes[0].scopes).toEqual(['noncustomer', 'oob', 'noncustomerlogin', 'adddevice_verifyuser', 'register_verifyuser', 'initregisterprofile'])
+    expect(routes[0].plugins[0].config?.scopes).toEqual(routes[0].scopes)
+  })
+})
+
+describe('Jira page paste with the route repeated in the title', () => {
+  const ticket = `[GW-EXT] | Add scope to existing endpoint: POST /v1/deposits/openaccounts/personalized/number/inquiry/ext - Oct 2026
+
+
+
+
+Key details
+Priority
+
+
+Medium
+Due date
+
+Add due date
+Description
+
+Release: Oct 2026
+
+Description: Add new scope for existing endpoints
+
+Required scope: noncustomer, adddevice_verifyuser, register_verifyuser, initregisterprofile
+
+Generate scope : None
+
+API:
+
+POST /v1/deposits/openaccounts/personalized/number/inquiry/ext - Oct 2026 
+
+Flow:
+
+Onboard open account`
+
+  it('yields one route carrying the ticket-level required scope', () => {
+    const { routes, issues } = parseTicket(ticket)
+    expect(routes).toHaveLength(1)
+    expect(routes[0].scopes).toEqual(['noncustomer', 'adddevice_verifyuser', 'register_verifyuser', 'initregisterprofile'])
+    expect(issues.some((i) => i.message.includes('Duplicate route'))).toBe(false)
+    expect(generateFormatA(routes)).toContain('- "initregisterprofile"')
+  })
+})

@@ -3,6 +3,7 @@ import { AlertTriangle, Trash2 } from 'lucide-react'
 import type { RouteDefinition } from '@/types/route'
 import { extractDomainInfo, parseMethods } from '@/utils/normalization'
 import { parseScopeList } from '@/parser/scopeParser'
+import { syncRequiredScopes } from '@/parser/pluginParser'
 import { Badge } from './ui/Badge'
 import { Button } from './ui/Button'
 
@@ -75,7 +76,10 @@ export function RouteEditor({ route, onUpdate, onDelete }: RouteEditorProps) {
             className={inputClass}
             defaultValue={route.scopes.join(', ')}
             placeholder="oob, prelogin"
-            onBlur={(e) => onUpdate(route.id, { scopes: parseScopeList(e.target.value) })}
+            onBlur={(e) => {
+              const scopes = parseScopeList(e.target.value)
+              onUpdate(route.id, { scopes, plugins: syncRequiredScopes(route.plugins, scopes) })
+            }}
           />
         </Field>
         <Field label="Plugin(s)">
