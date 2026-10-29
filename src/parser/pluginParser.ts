@@ -37,11 +37,10 @@ export interface FieldEntry {
 
 /** Classify a "Key: value" style field-name into a known FieldKind, or null if unrecognized. */
 export function classifyFieldKeyword(raw: string): FieldKind | null {
-  const key = raw.trim().toLowerCase()
+  const key = raw.trim().toLowerCase().replace(/\s+/g, ' ')
+  // "Required scope", "Require scope", "Required scopes", ...
+  if (/^requir(e|ed) scopes?$/.test(key)) return 'requiredScope'
   switch (key) {
-    case 'required scope':
-    case 'required scopes':
-      return 'requiredScope'
     case 'scope':
     case 'scopes':
       return 'requiredScope'

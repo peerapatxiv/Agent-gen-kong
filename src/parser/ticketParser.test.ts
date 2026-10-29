@@ -425,3 +425,15 @@ Onboard open account`
     expect(generateFormatA(routes)).toContain('- "initregisterprofile"')
   })
 })
+
+describe('"Require scope" spelling variant', () => {
+  it('reads "Require scope : oob" as the required scope', () => {
+    const { routes } = parseTicket(`Require scope : oob
+
+API:
+
+POST /v1/ekyc/generateOTP/ext - Oct 2026`)
+    expect(routes).toHaveLength(1)
+    expect(routes[0].scopes).toEqual(['oob'])
+  })
+})
