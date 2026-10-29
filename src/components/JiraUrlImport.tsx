@@ -5,8 +5,9 @@ import { useToast } from '@/hooks/useToast'
 import { Button } from './ui/Button'
 
 const CREDENTIALS_KEY = 'jira-import-credentials'
+const sectionLabelClass = 'text-[11px] font-medium uppercase tracking-wide text-[var(--color-text-faint)]'
 const inputClass =
-  'h-8 min-w-0 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 text-xs text-[var(--color-text)] outline-none placeholder:text-[var(--color-text-faint)] focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/25'
+  'h-8 w-full min-w-0 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-raised)] px-2.5 text-xs text-[var(--color-text)] outline-none placeholder:text-[var(--color-text-faint)] focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/25'
 
 function loadStoredCredentials(): JiraCredentials {
   try {
@@ -85,7 +86,7 @@ export function JiraUrlImport({ onImport }: JiraUrlImportProps) {
     if (!ref) return
 
     if (!credentials.email.trim() || !credentials.apiToken.trim()) {
-      toast.show('Add your Jira email and API token above, or use Open + paste the JSON manually below.', 'error')
+      toast.show('Add your Jira email and API token, or use Open JSON + paste below.', 'error')
       handleOpenLink()
       return
     }
@@ -111,81 +112,86 @@ export function JiraUrlImport({ onImport }: JiraUrlImportProps) {
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-dashed border-[var(--color-border)] p-3">
-      <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-muted)]">
-        <Sparkles size={13} />
-        Import from Jira URL
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="jira-issue-url" className={sectionLabelClass}>
+          Issue URL
+        </label>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            id="jira-issue-url"
+            type="url"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://your-site.atlassian.net/browse/ABC-123"
+            className={`${inputClass} min-w-0 flex-1`}
+          />
+          <Button variant="primary" size="sm" onClick={handleFetch} disabled={loading}>
+            {loading ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+            {loading ? 'Fetching…' : 'Fetch ticket'}
+          </Button>
+        </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <input
-          type="email"
-          value={credentials.email}
-          onChange={(e) => updateCredentials({ email: e.target.value })}
-          placeholder="Jira email"
-          autoComplete="username"
-          className={`${inputClass} w-40 flex-1`}
-        />
-        <input
-          type="password"
-          value={credentials.apiToken}
-          onChange={(e) => updateCredentials({ apiToken: e.target.value })}
-          placeholder="Jira API token"
-          autoComplete="current-password"
-          title="Use a classic (unscoped) API token, or a scoped token with the read:jira-work scope enabled for Jira"
-          className={`${inputClass} w-40 flex-1`}
-        />
+      <div className="flex flex-col gap-1.5">
+        <span className={sectionLabelClass}>API credentials</span>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <input
+            type="email"
+            value={credentials.email}
+            onChange={(e) => updateCredentials({ email: e.target.value })}
+            placeholder="Jira email"
+            autoComplete="username"
+            className={inputClass}
+          />
+          <input
+            type="password"
+            value={credentials.apiToken}
+            onChange={(e) => updateCredentials({ apiToken: e.target.value })}
+            placeholder="Jira API token"
+            autoComplete="current-password"
+            title="Use a classic (unscoped) API token, or a scoped token with the read:jira-work scope enabled for Jira"
+            className={inputClass}
+          />
+        </div>
+        <p className="text-[11px] leading-relaxed text-[var(--color-text-faint)]">
+          Use a{' '}
+          <a
+            href="https://id.atlassian.com/manage-profile/security/api-tokens"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-[var(--color-text-muted)]"
+          >
+            classic (unscoped) API token
+          </a>{' '}
+          — scoped tokens need <code>read:jira-work</code>. Stored only in this browser and sent only to your Jira site.
+        </p>
       </div>
 
-      <p className="text-[11px] text-[var(--color-text-faint)]">
-        Create a{' '}
-        <a
-          href="https://id.atlassian.com/manage-profile/security/api-tokens"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline hover:text-[var(--color-text-muted)]"
-        >
-          classic (unscoped) API token
-        </a>{' '}
-        — scoped tokens need the <code>read:jira-work</code> scope enabled for Jira or the fetch below will fail with a permission/scope
-        error.
-      </p>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <input
-          type="url"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://your-site.atlassian.net"
-          className={`${inputClass} min-w-0 flex-1`}
-        />
-        <Button variant="outline" size="sm" onClick={handleOpenLink} title="Open the issue JSON in a new tab (uses your logged-in Jira session)">
-          <ExternalLink size={13} />
-          Open
-        </Button>
-        <Button variant="outline" size="sm" onClick={handleCopyLink} title="Copy the issue JSON link">
-          {copied ? <Check size={13} /> : <Copy size={13} />}
-          {copied ? 'Copied' : 'Copy link'}
-        </Button>
-        <Button variant="primary" size="sm" onClick={handleFetch} disabled={loading}>
-          {loading ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
-          {loading ? 'Fetching…' : 'Fetch ticket'}
-        </Button>
+      <div className="flex items-center gap-3 text-[11px] uppercase tracking-wide text-[var(--color-text-faint)]">
+        <span className="h-px flex-1 bg-[var(--color-border)]" />
+        or paste JSON without a token
+        <span className="h-px flex-1 bg-[var(--color-border)]" />
       </div>
-
-      <p className="text-[11px] text-[var(--color-text-faint)]">
-        Email/token are stored only in this browser and sent directly to your Jira site — never anywhere else. Don't want to enter a
-        token? Click Open (or Copy the link and paste it into your browser) to view the ticket JSON with your normal Jira login, then
-        copy the response body and paste it below.
-      </p>
 
       <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleOpenLink} title="Open the issue JSON in a new tab (uses your logged-in Jira session)">
+            <ExternalLink size={13} />
+            Open JSON
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleCopyLink} title="Copy the issue JSON link">
+            {copied ? <Check size={13} /> : <Copy size={13} />}
+            {copied ? 'Copied' : 'Copy link'}
+          </Button>
+          <span className="text-[11px] text-[var(--color-text-faint)]">Opens with your normal Jira login — copy the response body below.</span>
+        </div>
         <textarea
           value={jsonPaste}
           onChange={(e) => setJsonPaste(e.target.value)}
           placeholder="Paste the JSON response here..."
           spellCheck={false}
-          className="h-20 w-full resize-y rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-2 font-mono text-[11px] leading-relaxed text-[var(--color-text)] outline-none placeholder:text-[var(--color-text-faint)] focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/25"
+          className="h-56 w-full resize-y rounded-lg border border-[var(--color-border)] bg-[var(--color-code-bg)] p-3 font-mono text-[12px] leading-relaxed text-[var(--color-text)] outline-none placeholder:text-[var(--color-text-faint)] focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/25"
         />
         <Button variant="secondary" size="sm" onClick={handleLoadPaste} disabled={!jsonPaste.trim()} className="self-start">
           Load ticket

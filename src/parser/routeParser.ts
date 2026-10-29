@@ -309,35 +309,82 @@ interface ProseBlock {
 
 const MULTILINE_FIELDS: FieldKind[] = ['requiredScope', 'generateScope']
 
-export function parseProseLines(lines: string[]): ProseBlock[] {
+function findAnchor(line: string): { path: string; inlineMethod?: string; hasQueryString: boolean } | null {
+  const anchorMatch = line.match(ANCHOR_RE)
+  if (anchorMatch) {
+    return { path: anchorMatch[2], inlineMethod: anchorMatch[1].toUpperCase(), hasQueryString: Boolean(anchorMatch[3]) }
+  }
+  const pathMatch = stripUrls(line).match(PATH_ONLY_RE)
+  if (pathMatch) {
+    return { path: pathMatch[1], inlineMethod: undefined, hasQueryString: Boolean(pathMatch[2]) }
+  }
+  return null
+}
+
+/** Record a ticket-level `Key: value` line (or a continuation of a multi-line one); returns the next continuation kind. */
+function collectStrayField(line: string, fields: FieldEntry[], continuationKind: FieldKind | null): FieldKind | null {
+  if (line === '') return null
+  const fieldMatch = line.match(FIELD_LINE_RE)
+  const kind = fieldMatch ? classifyFieldKeyword(fieldMatch[1]) : null
+  if (fieldMatch && kind) {
+    const value = fieldMatch[2].trim()
+    fields.push({ kind, value })
+    return value === '' && MULTILINE_FIELDS.includes(kind) ? kind : null
+  }
+  if (continuationKind) {
+    const entry = fields[fields.length - 1]
+    entry.value = entry.value ? `${entry.value}\n${line}` : line
+    return continuationKind
+  }
+  return null
+}
+
+/**
+ * Drop a bare route mention (no fields of its own, e.g. the Jira title "Add scope to existing endpoint: POST /v1/...")
+ * when the same method+path is also listed elsewhere, so it doesn't become a duplicate route.
+ */
+function dropBareDuplicateBlocks(blocks: ProseBlock[]): ProseBlock[] {
+  const keyOf = (b: ProseBlock) => `${b.inlineMethod ?? ''} ${b.path}`
+  const kept: ProseBlock[] = []
+  for (const block of blocks) {
+    const twin = kept.find((k) => keyOf(k) === keyOf(block))
+    if (!twin) {
+      kept.push(block)
+    } else if (twin.fields.length === 0) {
+      kept[kept.indexOf(twin)] = block
+    } else if (block.fields.length > 0) {
+      kept.push(block) // both carry their own fields — a genuine duplicate, left for the duplicate warning
+    }
+  }
+  return kept
+}
+
+/**
+ * Group prose lines into route blocks. `Key: value` lines that sit outside any block (e.g. a
+ * "Required scope:" header above the "API:" list) are pushed into `strayFields` as ticket-level fields.
+ */
+export function parseProseLines(lines: string[], strayFields: FieldEntry[] = []): ProseBlock[] {
   const blocks: ProseBlock[] = []
   let current: ProseBlock | null = null
   let continuationKind: FieldKind | null = null
-
-  const findAnchor = (line: string) => {
-    const anchorMatch = line.match(ANCHOR_RE)
-    if (anchorMatch) {
-      return { path: anchorMatch[2], inlineMethod: anchorMatch[1].toUpperCase(), hasQueryString: Boolean(anchorMatch[3]) }
-    }
-    const pathMatch = stripUrls(line).match(PATH_ONLY_RE)
-    if (pathMatch) {
-      return { path: pathMatch[1], inlineMethod: undefined, hasQueryString: Boolean(pathMatch[2]) }
-    }
-    return null
-  }
+  let strayContinuationKind: FieldKind | null = null
 
   for (const rawLine of lines) {
     const line = rawLine.trim()
     const anchor = findAnchor(line)
 
     if (anchor) {
+      strayContinuationKind = null
       current = { anchorLine: line, inlineMethod: anchor.inlineMethod, path: anchor.path, hasQueryString: anchor.hasQueryString, fields: [], raw: [rawLine] }
       blocks.push(current)
       continuationKind = null
       continue
     }
 
-    if (!current) continue // stray line before any anchor — ignore
+    if (!current) {
+      strayContinuationKind = collectStrayField(line, strayFields, strayContinuationKind)
+      continue
+    }
 
     if (line === '') {
       continuationKind = null
@@ -369,6 +416,7 @@ export function parseProseLines(lines: string[]): ProseBlock[] {
     // Unrecognized, non-blank line: ends this block's extent (line itself is not consumed).
     current = null
     continuationKind = null
+    strayContinuationKind = null
   }
 
   return blocks
@@ -431,16 +479,20 @@ export function extractRoutesFromText(text: string): ExtractedRoute[] {
     }
   }
 
-  const proseBlocks = parseProseLines(proseLines)
+  const strayFields: FieldEntry[] = []
+  const proseBlocks = dropBareDuplicateBlocks(parseProseLines(proseLines, strayFields))
   const proseRoutes = proseBlocks.map(proseBlockToExtracted)
 
-  // A vertical info table only unambiguously belongs to "the" route when there's
-  // exactly one and no genuine multi-route table was also found.
-  if (tableRoutes.length === 0 && proseRoutes.length === 1) {
-    const [route] = proseRoutes
-    if (route.requiredScopeRaw === undefined) {
-      const scopeField = ticketLevelFields.find((f) => f.kind === 'requiredScope')
-      if (scopeField) route.requiredScopeRaw = scopeField.value
+  if (tableRoutes.length === 0) {
+    // A ticket-level "Required scope:" line (outside any route block) applies to every listed route without its own scope.
+    const strayScope = strayFields.find((f) => f.kind === 'requiredScope')
+    // A vertical info table only unambiguously belongs to "the" route when there's exactly one.
+    const tableScope = proseRoutes.length === 1 ? ticketLevelFields.find((f) => f.kind === 'requiredScope') : undefined
+    const fallback = strayScope ?? tableScope
+    if (fallback) {
+      for (const route of proseRoutes) {
+        if (route.requiredScopeRaw === undefined) route.requiredScopeRaw = fallback.value
+      }
     }
   }
 
